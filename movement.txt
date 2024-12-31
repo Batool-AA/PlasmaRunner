@@ -1,0 +1,351 @@
+class good_squares;
+	bit [9:0] x;
+	bit [9:0] y;
+	
+	function new_square(bit [9:0] x_loc, bit [9:0] y_loc);
+		this.x = x_loc;
+		this.y = y_loc;
+	endfunction
+endclass
+
+module my_top(
+    input clk,
+
+    output h_sync,
+
+    output v_sync,
+
+    output [3:0] red ,
+
+    output [3:0] green ,
+
+    output [3:0] blue
+);
+
+    wire video_on;
+
+    wire [9:0] x_loc;
+
+    wire [9:0] y_loc;
+
+    wire clk_d;
+
+    wire trig_v;
+
+    wire [9:0] h_count;
+
+    wire [9:0] v_count;
+
+clk_div c1 (clk, clk_d);
+
+h_counter h1 (clk_d,trig_v,h_count);
+
+v_counter v1 (clk_d, trig_v, v_count);
+
+VGA vv1 (h_sync, v_sync,h_count,v_count,video_on, x_loc, y_loc);
+
+wire x;
+wire y;
+good_squares array[10];
+
+initial begin
+	for (int i = 0; i < $size (array); i++) begin
+		my_ran r1 (clk, x, y);
+		array[i] = new_square(x, y);
+		pixel_gen p1 (clk_d, x_loc, y_loc, x, y, video_on, red, green, blue);
+	end
+end
+endmodule
+
+module my_ran(
+    input clk,
+    output [9:0] X, 
+    output [9:0] Y
+    );
+    
+    reg [3:0] c1 = 0, c2 = 1, pos_c = 2, neg_c = 10;
+    reg [9:0] valx, valy;
+    
+    always @ (posedge clk)
+    begin
+      
+      valx = (150 / (pos_c + c1)) + 150*c1;
+      c1 = c1 + 2;
+      
+      if (c1 > 8)
+      begin
+        c1 = 0;
+      end
+     
+    end
+    assign X = valx;
+    
+    always @ (negedge clk)
+    begin
+      
+      valy = (150 / (neg_c - c1)) + 150*c2;
+      c2 = c2 + 2;
+      
+      if (c2 > 9)
+      begin
+        c2 = 1;
+      end
+     
+    end
+    assign Y = valy;
+    
+endmodule
+
+
+module h_counter(clk,trig_v,h_counter);
+
+input clk;
+
+output trig_v;
+
+output [9:0] h_counter;
+
+reg trig_v;
+
+reg [9:0]h_counter;
+
+ 
+
+initial begin
+
+h_counter = 0;
+
+trig_v = 0;
+
+end
+
+always @ (posedge clk)
+
+    begin
+
+        if (h_counter <= 798)
+
+            begin
+
+                h_counter <= h_counter + 1;
+
+                trig_v <= 0;
+
+            end
+
+        else
+
+            begin
+
+                h_counter <= 0;
+
+                trig_v <= 1;
+
+        end
+
+    end
+
+ 
+
+endmodule
+
+ 
+
+ 
+
+module v_counter(clk, enable_v, v_count);
+
+input clk;
+
+input enable_v;
+
+output [9:0] v_count;
+
+reg [9:0] v_count;
+
+ 
+
+initial begin
+
+v_count = 0;
+
+end
+
+always @ (posedge clk)
+
+    begin
+
+        if (enable_v == 1)
+
+            begin
+
+                if (v_count <= 524)
+
+                    v_count <= v_count + 1;      
+
+                else
+
+                        v_count <= 0;
+
+             end
+
+       
+
+    end
+
+endmodule
+
+ 
+
+ 
+
+module clk_div(clk, clk_d);
+
+parameter div_val = 1;
+
+input clk;
+
+output clk_d;
+
+reg clk_d;
+
+reg count;
+
+ 
+
+initial begin
+
+clk_d = 0;
+
+count = 0;
+
+end
+
+ 
+
+always @ (posedge clk)
+
+    begin
+
+        if (count == div_val)
+
+            begin
+
+                count <= 0;
+
+            end
+
+        else
+
+            count <= count + 1;
+
+    end
+
+always @ (posedge clk)
+
+    begin
+
+        if (count == div_val)
+
+            clk_d = ~clk_d;
+
+    end
+
+endmodule
+
+ 
+
+ 
+
+ 
+
+ 
+
+module VGA(h_sync, v_sync,h_count,v_count,video_on, x_loc, y_loc);
+
+output h_sync;
+
+output v_sync;
+
+output video_on;
+
+output [9:0] x_loc;
+
+output [9:0] y_loc;
+
+input [9:0] h_count;
+
+input [9:0] v_count;
+
+ 
+
+localparam HD = 640;
+
+localparam HF = 16;
+
+localparam HB = 48;
+
+localparam HR = 96;
+
+ 
+
+localparam VD = 480;
+
+localparam VF = 10;
+
+localparam VB = 33;
+
+localparam VR = 2;
+
+ 
+
+assign h_sync = (h_count<=655)?1:(h_count>=752)?1:0;
+
+assign v_sync = (v_count<=489)?1:(v_count>=492)?1:0;
+
+assign video_on = (h_count <= 639) ? ((v_count <= 479) ? 1 : 0) : 0;
+
+assign x_loc = h_count;
+
+assign y_loc = v_count;
+
+ 
+
+endmodule                                      
+                                               
+
+module pixel_gen(
+
+input clk_d,
+
+input [9:0] pixel_x,
+
+input [9:0] pixel_y,
+
+input [9:0] x,
+
+input[9:0] y,
+
+input video_on,
+
+output reg [3:0] red = 0,
+
+output reg [3:0] green = 0,
+
+output reg [3:0] blue = 0
+
+);
+
+wire good_squares = pixel_x >= (x-10) & pixel_x <= (x+10) & pixel_y >= (y-10) & pixel_y <= (y+10);
+
+
+always @(posedge clk_d) begin
+
+          red <= video_on ? (good_squares ? 4'h0 : 4'h0 ): 4'h0;
+
+          green <= video_on ? (good_squares ? 4'h0 : 4'h0) : 4'h0;
+
+	  blue <= video_on ? (good_squares ? 4'hF : 4'h0) : 4'h0;
+end
+endmodule
+ 

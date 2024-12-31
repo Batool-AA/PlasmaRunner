@@ -1,0 +1,312 @@
+`timescale 1ns / 1ps
+
+ 
+
+module TopLevel(
+
+    input clk,
+
+    output h_sync,
+
+    output v_sync,
+
+    output [3:0] red ,
+
+    output [3:0] green ,
+
+    output [3:0] blue
+
+);
+
+wire video_on;
+
+    wire [9:0] x_loc;
+
+    wire [9:0] y_loc;
+
+    wire clk_d;
+
+    wire trig_v;
+
+    wire [9:0] h_count;
+
+    wire [9:0] v_count;
+
+clk_div c1 (clk, clk_d);
+
+h_counter h1 (clk_d,trig_v,h_count);
+
+v_counter v1 (clk_d, trig_v, v_count);
+
+VGA vv1 (h_sync, v_sync,h_count,v_count,video_on, x_loc, y_loc);
+
+pixel_gen p1 (clk_d, x_loc, y_loc, video_on, red, green, blue);
+
+ 
+
+endmodule  
+
+ 
+
+ 
+
+module h_counter(clk,trig_v,h_counter);
+
+input clk;
+
+output trig_v;
+
+output [9:0] h_counter;
+
+reg trig_v;
+
+reg [9:0]h_counter;
+
+ 
+
+initial begin
+
+h_counter = 0;
+
+trig_v = 0;
+
+end
+
+always @ (posedge clk)
+
+    begin
+
+        if (h_counter <= 798)
+
+            begin
+
+                h_counter <= h_counter + 1;
+
+                trig_v <= 0;
+
+            end
+
+        else
+
+            begin
+
+                h_counter <= 0;
+
+                trig_v <= 1;
+
+        end
+
+    end
+
+ 
+
+endmodule
+
+ 
+
+ 
+
+module v_counter(clk, enable_v, v_count);
+
+input clk;
+
+input enable_v;
+
+output [9:0] v_count;
+
+reg [9:0] v_count;
+
+ 
+
+initial begin
+
+v_count = 0;
+
+end
+
+always @ (posedge clk)
+
+    begin
+
+        if (enable_v == 1)
+
+            begin
+
+                if (v_count <= 524)
+
+                    v_count <= v_count + 1;      
+
+                else
+
+                        v_count <= 0;
+
+             end
+
+       
+
+    end
+
+endmodule
+
+ 
+
+ 
+
+module clk_div(clk, clk_d);
+
+parameter div_val = 1;
+
+input clk;
+
+output clk_d;
+
+reg clk_d;
+
+reg count;
+
+ 
+
+initial begin
+
+clk_d = 0;
+
+count = 0;
+
+end
+
+ 
+
+always @ (posedge clk)
+
+    begin
+
+        if (count == div_val)
+
+            begin
+
+                count <= 0;
+
+            end
+
+        else
+
+            count <= count + 1;
+
+    end
+
+always @ (posedge clk)
+
+    begin
+
+        if (count == div_val)
+
+            clk_d = ~clk_d;
+
+    end
+
+endmodule
+
+ 
+
+ 
+
+ 
+
+ 
+
+module VGA(h_sync, v_sync,h_count,v_count,video_on, x_loc, y_loc);
+
+output h_sync;
+
+output v_sync;
+
+output video_on;
+
+output [9:0] x_loc;
+
+output [9:0] y_loc;
+
+input [9:0] h_count;
+
+input [9:0] v_count;
+
+ 
+
+localparam HD = 640;
+
+localparam HF = 16;
+
+localparam HB = 48;
+
+localparam HR = 96;
+
+ 
+
+localparam VD = 480;
+
+localparam VF = 10;
+
+localparam VB = 33;
+
+localparam VR = 2;
+
+ 
+
+assign h_sync = (h_count<=655)?1:(h_count>=752)?1:0;
+
+assign v_sync = (v_count<=489)?1:(v_count>=492)?1:0;
+
+assign video_on = (h_count <= 639) ? ((v_count <= 479) ? 1 : 0) : 0;
+
+assign x_loc = h_count;
+
+assign y_loc = v_count;
+
+ 
+
+endmodule                                      
+                                               
+
+module pixel_gen(
+
+input clk_d,
+
+input [9:0] pixel_x,
+
+input [9:0] pixel_y,
+
+input video_on,
+
+output reg [3:0] red = 0,
+
+output reg [3:0] green = 0,
+
+output reg [3:0] blue = 0
+
+);
+
+
+wire Y = (pixel_y >= 100 & pixel_y <= 250 & pixel_x >= 10 & pixel_x <= 30) || (pixel_y >= 100 & pixel_y <= 250 & pixel_x >= 70 & pixel_x <= 90) || (pixel_y >= 230 & pixel_y <= 250 & pixel_x >= 30 & pixel_x <= 70) || (pixel_y >= 250 & pixel_y <= 380 & pixel_x >= 40 & pixel_x <= 60);  
+
+wire O = (pixel_y >= 100 & pixel_y <= 380 & pixel_x >= 100 & pixel_x <= 120) || (pixel_y >= 100 & pixel_y <= 380 & pixel_x >= 160 & pixel_x <= 180) || (pixel_y >= 100 & pixel_y <= 120 & pixel_x >= 120 & pixel_x <= 160) || (pixel_y >= 360 & pixel_y <= 380 & pixel_x >= 120 & pixel_x <= 160);  
+
+wire U = (pixel_y >= 100 & pixel_y <= 380 & pixel_x >= 190 & pixel_x <= 210) || (pixel_y >= 100 & pixel_y <= 380 & pixel_x >=250 & pixel_x <= 270) || (pixel_y >= 360 & pixel_y <= 380 & pixel_x >= 210 & pixel_x <= 250);
+
+wire L = (pixel_y >= 100 & pixel_y <= 380 & pixel_x >= 280 & pixel_x <= 300) || (pixel_y >= 360 & pixel_y <= 380 & pixel_x >= 300 & pixel_x <= 360);
+
+wire O_L = (pixel_y >= 100 & pixel_y <= 380 & pixel_x >= 370 & pixel_x <= 390) || (pixel_y >= 100 & pixel_y <= 380 & pixel_x >= 430 & pixel_x <= 450) || (pixel_y >= 100 & pixel_y <= 120 & pixel_x >= 390 & pixel_x <= 430) || (pixel_y >= 360 & pixel_y <= 380 & pixel_x >= 390 & pixel_x <= 430);
+
+wire S = (pixel_y >= 100 & pixel_y <= 120 & pixel_x >= 480 & pixel_x <= 540) || (pixel_y >= 230 & pixel_y <= 250 & pixel_x >= 480 & pixel_x <= 520) || (pixel_y >= 360 & pixel_y <= 380 & pixel_x >= 460 & pixel_x <= 520) || (pixel_y >= 100 & pixel_y <= 250 & pixel_x >= 460 & pixel_x <= 480) || (pixel_y >= 230 & pixel_y <= 380 & pixel_x >= 520 & pixel_x <= 540);      
+
+wire E = (pixel_y >= 100 & pixel_y <= 380 & pixel_x >= 550 & pixel_x <= 570) || (pixel_y >= 100 & pixel_y <= 120 & pixel_x >= 570 & pixel_x <= 630) || (pixel_y >= 230 & pixel_y <= 250 & pixel_x >= 570 & pixel_x <= 600) || (pixel_y >= 360 & pixel_y <= 380 & pixel_x >= 570 & pixel_x <= 630);
+
+always @(posedge clk_d) begin
+
+          red <= video_on ? (Y ? 4'hF: (O ? 4'h0: (U ? 4'h0: (L ? 4'hF: (O_L ? 4'hF: (S ? 4'h0: (E ? 4'hF: 4'h0))))))) : 4'h0;
+
+          green <= video_on ? (Y ? 4'h0: (O ? 4'hF: (U ? 4'h0: (L ? 4'hF: (O_L ? 4'h0: (S ? 4'hF:(E ? 4'hF: 4'h0))))))) : 4'h0;
+
+        blue <= video_on ? (Y ? 4'h0: (O ? 4'h0: (U ? 4'hF: (L ? 4'h0: (O_L ? 4'hF: (S ? 4'hF: (E ? 4'hF: 4'h0))))))) : 4'h0;
+       
+end
+endmodule
